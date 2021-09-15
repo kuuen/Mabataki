@@ -25,4 +25,12 @@
         tools:layout_editor_absoluteX="25dp"
         tools:layout_editor_absoluteY="58dp" />
 
+    <ToggleButton
+        android:id="@+id/togBtnZyouzi"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:textOff="常時停止"
+        android:textOn="常時開始"
+        android:checked="false"/>
+
 </LinearLayout>
