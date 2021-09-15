@@ -17,6 +17,10 @@ import androidx.work.WorkManager
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import androidx.work.PeriodicWorkRequest
+import androidx.work.WorkInfo
+import com.google.common.util.concurrent.ListenableFuture
+import java.time.Duration
 
 
 class MainActivity : AppCompatActivity() {
@@ -50,20 +54,43 @@ class MainActivity : AppCompatActivity() {
     private val onBtnStopClicklistener = View.OnClickListener {
         val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         vibrator.cancel()
+
+        VibWorker.halt = true;
     }
 
     private val onTogBtnZyouziCheckedChangeListener = CompoundButton.OnCheckedChangeListener { _, isChecked ->
+
+        val workManager = WorkManager.getInstance(application)
+
+        // これは定期的に起動するリクエスト
+//        val periodicWork = PeriodicWorkRequest.Builder(
+//            VibWorker::class.java,
+//            Duration.ofMinutes(15)
+//        ).apply {
+//            addTag(VibWorker.WORK_TAG)
+//        }.build()
+
+        // タグ管理できるのは定期的に起動するものだけなのかも
+//        val infoByTags : ListenableFuture<List<WorkInfo>> = workManager.getWorkInfosByTag(VibWorker.WORK_TAG)
+//        infoByTags.get().forEach {
+//            // it が　foreach で取得した中身
+//            if (it.state !=  WorkInfo.State.CANCELLED) {
+//                // タグを指定してキャンセルを行う
+//                workManager.cancelAllWorkByTag(VibWorker.WORK_TAG)
+//            }
+//        }
+
+        // Workerを停止
+        VibWorker.halt = true;
+
         if (isChecked) {
             Toast.makeText(this@MainActivity, "ちぇくされた", Toast.LENGTH_SHORT).show()
+            workManager.enqueue(OneTimeWorkRequest.from(VibWorker::class.java) )
         } else {
             Toast.makeText(this@MainActivity, "チェック解除", Toast.LENGTH_SHORT).show()
         }
 
-
-        val workManager = WorkManager.getInstance(application)
-        workManager.enqueue(OneTimeWorkRequest.from(VibWorker::class.java))
-
-
+        // 通知の実験　-----------------------------------------------------------------------------
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // カテゴリー名（通知設定画面に表示される情報）

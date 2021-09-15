@@ -17,10 +17,18 @@ import androidx.work.*
 
 class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
-    /**
-     * 識別タグ　起動や、停止時に指定する
-     */
-    val WORK_TAG = "VibWorkerTAG"
+    // staticな変数はここに記述
+    companion object {
+        /**
+         * 識別タグ　起動や、停止時に指定する 使用しないかも
+         */
+        val WORK_TAG = "VibWorkerTAG"
+
+        /**
+         * workerを停止するにはtrueを指定
+         */
+        var halt = false
+    }
 
     override fun doWork(): Result {
 
@@ -40,26 +48,14 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
 //        Toast.makeText(this.applicationContext, "doWork呼び出し", Toast.LENGTH_SHORT).show()
 
+        // 暫く待つ　haltの値変更後は待ちが必要
+        Thread.sleep(3500)
+        halt = false
 
-        // バイブレーションを動作させるために必要
-        val handler = Handler(Looper.getMainLooper())
-        handler.postDelayed(Runnable { // Run your task here
-//            Toast.makeText(this.applicationContext, "doWork呼び出し", Toast.LENGTH_SHORT).show()
-//
-            val vibrator = this.applicationContext.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-//            val timing = longArrayOf(3000, 200)
-//            val effect = VibrationEffect.createWaveform(timing, 0)
-//            vibrator.vibrate(effect)
-
-            val vibrationEffect = VibrationEffect.createOneShot(200, DEFAULT_AMPLITUDE)
-            vibrator.vibrate(vibrationEffect)
-
-        }, 1000)
-
-
-        while (true) {
+        while (!halt) {
             Thread.sleep(3000)
 
+            // バイブレーションを動作させるために必要
             val handler = Handler(Looper.getMainLooper())
             handler.postDelayed(Runnable { // Run your task here
                 val vibrator = this.applicationContext.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
@@ -73,10 +69,14 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         return Result.success()
     }
 
+    /**
+     * workManager.cancelAllWorkByTag等でキャンセルされた際に呼び出されるよう
+     * 単発起動なので使用しないはず
+     */
     override fun onStopped() {
         super.onStopped()
 
-        Log.d(WORK_TAG, "worker : onStopped")
 
+        Log.d(WORK_TAG, "worker : onStopped")
     }
 }
