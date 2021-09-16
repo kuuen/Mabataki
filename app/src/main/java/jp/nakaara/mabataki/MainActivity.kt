@@ -21,6 +21,10 @@ import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkInfo
 import com.google.common.util.concurrent.ListenableFuture
 import java.time.Duration
+import android.content.Intent
+
+
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -37,8 +41,15 @@ class MainActivity : AppCompatActivity() {
 
         val togBtnZyouzi : ToggleButton = findViewById<ToggleButton>(R.id.togBtnZyouzi)
         togBtnZyouzi.setOnCheckedChangeListener(onTogBtnZyouziCheckedChangeListener)
+
+        val btnAppList : Button = findViewById<Button>(R.id.btnAppList)
+        btnAppList.setOnClickListener(onbtnAppListlistener)
     }
 
+    private val onbtnAppListlistener = View.OnClickListener {
+        val intent = Intent(this@MainActivity, AppListActivity::class.java)
+        startActivity(intent)
+    }
 
     private val onBtnTestClicklistener = View.OnClickListener {
 //        val vibratorManager = this.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager

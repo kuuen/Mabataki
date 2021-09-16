@@ -33,4 +33,13 @@
         android:textOn="常時開始"
         android:checked="false"/>
 
+    <Button
+        android:id="@+id/btnAppList"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="アプリ一覧"
+        tools:ignore="MissingConstraints"
+        tools:layout_editor_absoluteX="25dp"
+        tools:layout_editor_absoluteY="58dp" />
+
 </LinearLayout>
