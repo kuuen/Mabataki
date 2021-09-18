@@ -76,6 +76,9 @@ class AppListActivity : AppCompatActivity() {
 
         // リストに一覧データを格納する
         val dataList: MutableList<AppData> = ArrayList<AppData>()
+        val utilCommon =  (this.application as UtilCommon)
+        val appList = utilCommon.appList
+
         for (app in installedAppList) {
 
             if (app.flags and ApplicationInfo.FLAG_SYSTEM === ApplicationInfo.FLAG_SYSTEM) {
@@ -86,6 +89,8 @@ class AppListActivity : AppCompatActivity() {
             data.label = app.loadLabel(packageManager).toString()
             data.icon = app.loadIcon(packageManager)
             data.pname = app.packageName
+            data.chkApp = appList.find { it == app.packageName } != null
+
             dataList.add(data)
         }
 
@@ -129,6 +134,7 @@ class AppListActivity : AppCompatActivity() {
         var label: String? = null
         var icon: Drawable? = null
         var pname: String? = null
+        var chkApp : Boolean = false
     }
 
     // ビューホルダー
@@ -136,17 +142,24 @@ class AppListActivity : AppCompatActivity() {
         var textLabel: TextView? = null
         var imageIcon: ImageView? = null
         var packageName: TextView? = null
+        var chkApp : CheckBox? = null
     }
 
     // アプリケーションのラベルとアイコンを表示するためのアダプタークラス
     private class AppListAdapter(context: Context, dataList: List<AppData?>?) :
         ArrayAdapter<AppData?>(context, R.layout.activity_main) {
 
+        private lateinit var utilCommon: UtilCommon
+
         private val mInflater: LayoutInflater
 
         init {
             mInflater = context.getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
             addAll(dataList!!)
+        }
+
+        public fun setUtilCommon(uc : UtilCommon)  {
+            utilCommon = uc
         }
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
@@ -160,6 +173,7 @@ class AppListActivity : AppCompatActivity() {
                 holder.textLabel = convertView!!.findViewById<View>(R.id.label) as TextView
                 holder.imageIcon = convertView.findViewById<View>(R.id.icon) as ImageView
 //                holder.packageName = convertView.findViewById<View>(R.id.pname) as TextView
+                holder.chkApp = convertView.findViewById<View>(R.id.chkApp) as CheckBox
                 convertView.setTag(holder)
             } else {
                 holder = convertView.getTag() as ViewHolder
@@ -171,7 +185,24 @@ class AppListActivity : AppCompatActivity() {
             holder.textLabel!!.setText(data!!.label)
             holder.imageIcon!!.setImageDrawable( data!!.icon)
 //            holder.packageName!!.setText(data!!.pname)
+            holder.chkApp!!.setChecked(data!!.chkApp)
+
+            var chk = convertView.findViewById<View>(R.id.chkApp) as CheckBox
+            chk.setOnClickListener{
+                data.chkApp = chk.isChecked
+
+                if (chk.isChecked()) {
+                    if (utilCommon.appList.find {it == data.pname} != null) {
+                        utilCommon.appList.add(data.pname.toString())
+                    }
+                } else {
+                    utilCommon.appList.remove(data.pname)
+                }
+            }
+
             return convertView!!
         }
     }
 }
+
+
