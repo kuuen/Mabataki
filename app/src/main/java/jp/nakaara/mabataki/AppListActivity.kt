@@ -33,6 +33,11 @@ import android.widget.ArrayAdapter
 
 class AppListActivity : AppCompatActivity() {
 
+    private val utilCommon: UtilCommon
+        get() {
+            return this.application as UtilCommon
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -98,10 +103,16 @@ class AppListActivity : AppCompatActivity() {
 //        val listView = ListView(this)
         val listView : ListView = findViewById<ListView>(R.id.listView)
 
-        val appListAdapter : AppListAdapter =  AppListAdapter(this, dataList)
-        listView.adapter = appListAdapter
+//        val appListAdapter : AppListAdapter =  AppListAdapter(this, dataList, this.application as UtilCommon)
+//        listView.adapter = appListAdapter
 
-        listView.setAdapter(AppListAdapter(this, dataList))
+        listView.setAdapter(AppListAdapter(this, dataList, this.application as UtilCommon))
+
+//        appListAdapter.utilCommon = this.application as UtilCommon
+
+//        val uc = this.application as UtilCommon
+//        uc.appList.count()
+//        appListAdapter.utilCommon = utilCommon
 
         //クリック処理
         listView.setOnItemClickListener(OnItemClickListener { parent, view, position, id ->
@@ -146,21 +157,23 @@ class AppListActivity : AppCompatActivity() {
     }
 
     // アプリケーションのラベルとアイコンを表示するためのアダプタークラス
-    private class AppListAdapter(context: Context, dataList: List<AppData?>?) :
-        ArrayAdapter<AppData?>(context, R.layout.activity_main) {
+    private class AppListAdapter(context: Context, dataList: List<AppData?>?, uc : UtilCommon ) : ArrayAdapter<AppData?>(context, R.layout.activity_main) {
 
-        private lateinit var utilCommon: UtilCommon
+
+        val utilCommon : UtilCommon
 
         private val mInflater: LayoutInflater
 
         init {
             mInflater = context.getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
             addAll(dataList!!)
-        }
-
-        public fun setUtilCommon(uc : UtilCommon)  {
             utilCommon = uc
         }
+
+//        public fun setUtilCommon(uc : UtilCommon)  {
+//            utilCommon = uc
+//
+//        }
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
 
@@ -187,16 +200,17 @@ class AppListActivity : AppCompatActivity() {
 //            holder.packageName!!.setText(data!!.pname)
             holder.chkApp!!.setChecked(data!!.chkApp)
 
+
             var chk = convertView.findViewById<View>(R.id.chkApp) as CheckBox
             chk.setOnClickListener{
                 data.chkApp = chk.isChecked
 
                 if (chk.isChecked()) {
-                    if (utilCommon.appList.find {it == data.pname} != null) {
-                        utilCommon.appList.add(data.pname.toString())
+                    if (utilCommon?.appList?.find {it == data.pname} == null) {
+                        utilCommon?.appList?.add(data.pname.toString())
                     }
                 } else {
-                    utilCommon.appList.remove(data.pname)
+                    utilCommon?.appList?.remove(data.pname)
                 }
             }
 
