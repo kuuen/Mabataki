@@ -28,15 +28,14 @@ import android.R.array
 import android.widget.ArrayAdapter
 
 
-
-
-
 class AppListActivity : AppCompatActivity() {
 
-    private val utilCommon: UtilCommon
-        get() {
-            return this.application as UtilCommon
-        }
+//    private val utilCommon: UtilCommon
+//        get() {
+//            return this.application as UtilCommon
+//        }
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,7 +80,11 @@ class AppListActivity : AppCompatActivity() {
 
         // リストに一覧データを格納する
         val dataList: MutableList<AppData> = ArrayList<AppData>()
-        val utilCommon =  (this.application as UtilCommon)
+//        val utilCommon =  (this.application as UtilCommon)
+//        val appList = utilCommon.appList
+
+        val utilCommon = UtilCommon.getInstance(this)
+
         val appList = utilCommon.appList
 
         for (app in installedAppList) {
@@ -94,7 +97,7 @@ class AppListActivity : AppCompatActivity() {
             data.label = app.loadLabel(packageManager).toString()
             data.icon = app.loadIcon(packageManager)
             data.pname = app.packageName
-            data.chkApp = appList.find { it == app.packageName } != null
+            data.chkApp = appList?.find { it == app.packageName } != null
 
             dataList.add(data)
         }
@@ -106,7 +109,7 @@ class AppListActivity : AppCompatActivity() {
 //        val appListAdapter : AppListAdapter =  AppListAdapter(this, dataList, this.application as UtilCommon)
 //        listView.adapter = appListAdapter
 
-        listView.setAdapter(AppListAdapter(this, dataList, this.application as UtilCommon))
+        listView.setAdapter(AppListAdapter(this, dataList, utilCommon))
 
 //        appListAdapter.utilCommon = this.application as UtilCommon
 
@@ -140,6 +143,15 @@ class AppListActivity : AppCompatActivity() {
 //        listView2.adapter = adapter
     }
 
+    override fun onPause() {
+        super.onPause()
+
+        val utilCommon = UtilCommon.getInstance(this)
+        Log.d("AppList", utilCommon.appList.count().toString())
+
+        utilCommon.saveInstance(this)
+    }
+
     // アプリケーションデータ格納クラス
     private class AppData {
         var label: String? = null
@@ -170,10 +182,6 @@ class AppListActivity : AppCompatActivity() {
             utilCommon = uc
         }
 
-//        public fun setUtilCommon(uc : UtilCommon)  {
-//            utilCommon = uc
-//
-//        }
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
 
@@ -206,12 +214,15 @@ class AppListActivity : AppCompatActivity() {
                 data.chkApp = chk.isChecked
 
                 if (chk.isChecked()) {
-                    if (utilCommon?.appList?.find {it == data.pname} == null) {
-                        utilCommon?.appList?.add(data.pname.toString())
+                    if (utilCommon.appList.find {it == data.pname} == null) {
+                        utilCommon.appList.add(data.pname.toString())
                     }
                 } else {
-                    utilCommon?.appList?.remove(data.pname)
+                    utilCommon.appList.remove(data.pname)
                 }
+
+                utilCommon.saveInstance(context)
+                Log.d("AppList", utilCommon.appList.count().toString())
             }
 
             return convertView!!
