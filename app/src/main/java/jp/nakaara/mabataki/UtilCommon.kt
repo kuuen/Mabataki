@@ -1,16 +1,15 @@
 package jp.nakaara.mabataki
 
-import android.app.Application
 import android.content.Context
 import androidx.preference.PreferenceManager
-//import android.preference.PreferenceManager
-
 import com.google.gson.Gson
 
 import android.text.TextUtils
 
-
-//class UtilCommon : Application() {
+/**
+ * データ格納クラス
+ * PreferenceManagerでアプリを閉じてもデータを保持できる
+ */
 class UtilCommon  {
     var vibration : Boolean = false
         get() = field
@@ -28,6 +27,9 @@ class UtilCommon  {
     companion object {
         private val UTIL_COMMON_PREF_KEY = "UTIL_COMMON"
 
+        /**
+         * 唯一のインスタンスを取得
+         */
         fun getInstance(context: Context): UtilCommon {
             val prefs = PreferenceManager.getDefaultSharedPreferences(context)
             val gson = Gson()

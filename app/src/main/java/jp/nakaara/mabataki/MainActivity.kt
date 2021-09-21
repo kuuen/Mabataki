@@ -22,6 +22,11 @@ import androidx.work.WorkInfo
 import com.google.common.util.concurrent.ListenableFuture
 import java.time.Duration
 import android.content.Intent
+import android.app.AppOpsManager
+import android.app.AppOpsManager.OPSTR_GET_USAGE_STATS
+
+import java.lang.reflect.Method
+
 
 
 
@@ -47,19 +52,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val onbtnAppListlistener = View.OnClickListener {
+
+        if (!isUsageStatsAllowed()) {
+            startActivity(Intent("android.settings.USAGE_ACCESS_SETTINGS"));
+        }
+
         val intent = Intent(this@MainActivity, AppListActivity::class.java)
         startActivity(intent)
     }
 
+//    @RequiresApi(Build.VERSION_CODES.Q)
     private val onBtnTestClicklistener = View.OnClickListener {
 //        val vibratorManager = this.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
 //        val vibrator = vibratorManager.getDefaultVibrator();
 
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        val timing = longArrayOf(3000, 200)
-        val effect = VibrationEffect.createWaveform(timing, 0)
-        vibrator.vibrate(effect)
+//        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+//        val timing = longArrayOf(3000, 200)
+//        val effect = VibrationEffect.createWaveform(timing, 0)
+//        vibrator.vibrate(effect)
+
+
         Toast.makeText(this@MainActivity, "Tapped", Toast.LENGTH_SHORT).show()
+
+
+//        if (!isUsageStatsAllowed()) {
+//            startActivity(Intent("android.settings.USAGE_ACCESS_SETTINGS"));
+//        }
     }
 
     private val onBtnStopClicklistener = View.OnClickListener {
@@ -130,4 +148,46 @@ class MainActivity : AppCompatActivity() {
         notificationManager.notify(1, notification)
 
     }
+
+
+    /**
+     * 使用履歴にアクセスできるアプリとなっているか確認
+     */
+//    @RequiresApi(Build.VERSION_CODES.Q)
+    fun isUsageStatsAllowed(): Boolean {
+        val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager
+        val uid = Process.myUid()
+//        var mode = 0
+
+        var mode = appOps.checkOpNoThrow(OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
+
+        // Androidバージョンでメソッドを変更する　対象がminSdk 26 = 8.0 オレオなので分岐は必要ないか
+        // unsafeCheckOpRawNoThrowはapi26で「java.lang.NoSuchMethodError」となる
+//        when {
+//            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> mode = appOps.unsafeCheckOpRawNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, uid, packageName)
+//            Build.VERSION.SDK_INT < Build.VERSION_CODES.O -> mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, uid, packageName)
+//        }
+
+        // unsafeCheckOpRawNoThrowで判定しなくてもよい？
+//        mode = appOps.unsafeCheckOpRawNoThrow(
+//            AppOpsManager.OPSTR_GET_USAGE_STATS, uid,
+//            packageName
+//        )
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
+
+//    class object {
+//        val AppOpsManagerClass: Class<out Any?>?
+//        val checkOpNoThrow: Method?
+//        {
+//            try{
+//                AppOpsManagerClass = Class.forName("android.app.AppOpsManager")
+//                checkOpNoThrow = AppOpsManagerClass?.getMethod("checkOpNoThrow", javaClass<Int>(), javaClass<Int>(), javaClass<String>())
+//            }   catch (e: Exception) {
+//                e.printStackTrace()
+//                AppOpsManagerClass = null
+//                checkOpNoThrow = null
+//            }
+//        }
+//    }
 }

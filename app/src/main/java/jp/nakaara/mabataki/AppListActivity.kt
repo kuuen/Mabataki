@@ -3,13 +3,9 @@ package jp.nakaara.mabataki
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.content.pm.ApplicationInfo
-import android.content.pm.PackageInfo
 
-import android.content.pm.PackageManager
 import android.util.Log
 import android.graphics.drawable.Drawable
-import androidx.recyclerview.widget.RecyclerView.ViewHolder
-
 
 import android.content.Context
 
@@ -17,25 +13,13 @@ import android.view.ViewGroup
 
 import android.view.LayoutInflater
 import android.view.View
-
-import androidx.recyclerview.widget.RecyclerView
-import android.content.Intent
 import android.widget.*
 
 import android.widget.AdapterView.OnItemClickListener
-import android.R.array
 
 import android.widget.ArrayAdapter
 
-
 class AppListActivity : AppCompatActivity() {
-
-//    private val utilCommon: UtilCommon
-//        get() {
-//            return this.application as UtilCommon
-//        }
-
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,51 +28,19 @@ class AppListActivity : AppCompatActivity() {
 
         // 端末にインストール済のアプリケーション一覧情報を取得
         val packageManager = getPackageManager()
-//        val packages: List<PackageInfo> = packageManager.getInstalledPackages(0)
-//        for (info: PackageInfo in packages) {
-//            Log.d("Test", "packageName: ${info.packageName}"
-//                    + ", versionName: ${info.versionName}"
-//                    + ", lastUpdateTime: ${info.lastUpdateTime}"
-//                    + ", targetSdk: ${info.applicationInfo.targetSdkVersion}"
-//                    + ", minSdk: ${info.applicationInfo.minSdkVersion}"
-//                    + ", sourceDir: ${info.applicationInfo.sourceDir}"
-//                    + ", uid: ${info.applicationInfo.uid}"
-//                    + ", label: ${info.applicationInfo.loadLabel(packageManager)}"
-//            )
-//        }
-
         val installedAppList: List<ApplicationInfo> = packageManager.getInstalledApplications(0)
-        // リストに一覧データを格納する
-
-//        val dataListEx: MutableList<AppData> = ArrayList<AppData>()
-//        for (app in installedAppList) {
-//            val data = AppData()
-//            data.label = app.loadLabel(packageManager).toString()
-//            data.icon = app.loadIcon(packageManager)
-//            data.pname = app.packageName
-//            dataListEx.add(data)
-//        }
-
-        for (appInfo in installedAppList) {
-            if (appInfo.flags and ApplicationInfo.FLAG_SYSTEM === ApplicationInfo.FLAG_SYSTEM) {
-                continue
-            }
-
-            Log.i("MainActivity", "ラベル = " + packageManager.getApplicationLabel(appInfo))
-            Log.i("MainActivity", "パッケージ名 = " + appInfo.packageName)
-        }
 
         // リストに一覧データを格納する
         val dataList: MutableList<AppData> = ArrayList<AppData>()
-//        val utilCommon =  (this.application as UtilCommon)
-//        val appList = utilCommon.appList
 
+        // 値を保存するクラスを取得
         val utilCommon = UtilCommon.getInstance(this)
 
+        // 指定されたのアプリ一覧を格納するクラスを取得
         val appList = utilCommon.appList
 
+        // インストールされたアプリ一覧を
         for (app in installedAppList) {
-
             if (app.flags and ApplicationInfo.FLAG_SYSTEM === ApplicationInfo.FLAG_SYSTEM) {
                 continue
             }
@@ -102,45 +54,21 @@ class AppListActivity : AppCompatActivity() {
             dataList.add(data)
         }
 
-        // リストビューにアプリケーションの一覧を表示する
-//        val listView = ListView(this)
-        val listView : ListView = findViewById<ListView>(R.id.listView)
+        // チェックされたアプリを優先にソート
+        dataList.sortBy { !it.chkApp }
 
-//        val appListAdapter : AppListAdapter =  AppListAdapter(this, dataList, this.application as UtilCommon)
-//        listView.adapter = appListAdapter
+        // リストビューにアプリケーションの一覧を表示する
+        val listView : ListView = findViewById<ListView>(R.id.listView)
 
         listView.setAdapter(AppListAdapter(this, dataList, utilCommon))
 
-//        appListAdapter.utilCommon = this.application as UtilCommon
-
-//        val uc = this.application as UtilCommon
-//        uc.appList.count()
-//        appListAdapter.utilCommon = utilCommon
-
         //クリック処理
         listView.setOnItemClickListener(OnItemClickListener { parent, view, position, id ->
-//            val item = installedAppList[position]
             val item : AppData = dataList[position]
             val pManager = getPackageManager()
-            //val intent = pManager.getLaunchIntentForPackage(item.packageName)
             val intent = pManager.getLaunchIntentForPackage(item.pname.toString())
             startActivity(intent)
         })
-
-//        val listView2 : ListView = findViewById<ListView>(R.id.listView)
-//
-//        // Adapterに渡す配列を作成します
-//        val data = arrayOf("パンダ", "ダチョウ", "ウミガメ", "メダカ")
-//
-//        // adapterを作成します
-//        val adapter = ArrayAdapter(
-//            this,
-//            android.R.layout.simple_list_item_1,
-//            data
-//        )
-//
-//        // adapterをlistViewに紐付けます。
-//        listView2.adapter = adapter
     }
 
     override fun onPause() {
@@ -152,7 +80,10 @@ class AppListActivity : AppCompatActivity() {
         utilCommon.saveInstance(this)
     }
 
-    // アプリケーションデータ格納クラス
+    /**
+     * アプリケーションデータ格納クラス
+     * ListViewに設定する値を格納
+     */
     private class AppData {
         var label: String? = null
         var icon: Drawable? = null
@@ -160,29 +91,38 @@ class AppListActivity : AppCompatActivity() {
         var chkApp : Boolean = false
     }
 
-    // ビューホルダー
+    /**
+     * ビューホルダー
+     * ListViewに表示されるオブジェクトを保持する
+     */
     private class ViewHolder {
         var textLabel: TextView? = null
         var imageIcon: ImageView? = null
-        var packageName: TextView? = null
         var chkApp : CheckBox? = null
     }
 
-    // アプリケーションのラベルとアイコンを表示するためのアダプタークラス
+    /**
+     * アプリケーションのラベルとアイコンを表示するためのアダプタークラス
+     */
     private class AppListAdapter(context: Context, dataList: List<AppData?>?, uc : UtilCommon ) : ArrayAdapter<AppData?>(context, R.layout.activity_main) {
-
 
         val utilCommon : UtilCommon
 
         private val mInflater: LayoutInflater
 
+        /**
+         * コンストラクタ
+         */
         init {
             mInflater = context.getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
             addAll(dataList!!)
             utilCommon = uc
         }
 
-
+        /**
+         * ListViewに表示される前に呼び出される
+         * 行単位で呼び出されているよう　ここでオブジェクトに値を設定している
+         */
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
 
             var holder : ViewHolder = ViewHolder()
@@ -193,26 +133,27 @@ class AppListActivity : AppCompatActivity() {
                 convertView = mInflater.inflate(R.layout.list_items, parent, false)
                 holder.textLabel = convertView!!.findViewById<View>(R.id.label) as TextView
                 holder.imageIcon = convertView.findViewById<View>(R.id.icon) as ImageView
-//                holder.packageName = convertView.findViewById<View>(R.id.pname) as TextView
                 holder.chkApp = convertView.findViewById<View>(R.id.chkApp) as CheckBox
                 convertView.setTag(holder)
             } else {
+                // ここが実行されるケースがわからないいらない記述か？
                 holder = convertView.getTag() as ViewHolder
             }
 
-            // 表示データを取得
+            // 表示データを取得　positionは今から設定する行No
             val data = getItem(position)
             // ラベルとアイコンをリストビューに設定
             holder.textLabel!!.setText(data!!.label)
             holder.imageIcon!!.setImageDrawable( data!!.icon)
-//            holder.packageName!!.setText(data!!.pname)
             holder.chkApp!!.setChecked(data!!.chkApp)
 
-
             var chk = convertView.findViewById<View>(R.id.chkApp) as CheckBox
+
+            // チェックした時のイベント
             chk.setOnClickListener{
                 data.chkApp = chk.isChecked
 
+                // 値格納オブジェクトに設定して保存を行う
                 if (chk.isChecked()) {
                     if (utilCommon.appList.find {it == data.pname} == null) {
                         utilCommon.appList.add(data.pname.toString())
@@ -229,5 +170,3 @@ class AppListActivity : AppCompatActivity() {
         }
     }
 }
-
-

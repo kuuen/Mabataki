@@ -1,7 +1,10 @@
 package jp.nakaara.mabataki
 
+import android.app.ActivityManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Context.VIBRATOR_SERVICE
 import android.os.*
@@ -13,6 +16,7 @@ import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.content.getSystemService
 import androidx.work.*
+import java.util.*
 
 
 class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
@@ -32,7 +36,8 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
     override fun doWork(): Result {
 
-//        val common = application as UtilCommon
+
+        val utilCommon = UtilCommon.getInstance(this.applicationContext)
 //
 //        if (common.vibration) {
 //
@@ -64,6 +69,9 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
             }, 1000)
 
             Log.d(WORK_TAG, "リピート中")
+
+            val activityManager = this.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            isForeground(activityManager)
         }
 
         return Result.success()
@@ -76,7 +84,36 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
     override fun onStopped() {
         super.onStopped()
 
-
         Log.d(WORK_TAG, "worker : onStopped")
+    }
+
+    private fun isForeground(activityManager: ActivityManager): Boolean {
+//        val runningProcesses = activityManager.runningAppProcesses
+//        for (processInfo in runningProcesses) {
+//            for (activeProcess in processInfo.pkgList) {
+//                Log.d(WORK_TAG, processInfo.importance.toString())
+//
+//                if (processInfo.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+//                    return true
+//                }
+//            }
+//        }
+
+        val cal = Calendar.getInstance()
+        cal.add(Calendar.SECOND, -3)    // 1
+
+//        val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager // 2
+        val usageStatsManager  : UsageStatsManager = applicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+
+
+        val queryUsageStats = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY, cal.timeInMillis, System.currentTimeMillis() // 3
+        )
+
+        queryUsageStats.forEach { i ->
+            Log.d(WORK_TAG, i.packageName)
+        }
+
+        return false
     }
 }
