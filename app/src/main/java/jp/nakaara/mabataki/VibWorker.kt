@@ -88,6 +88,8 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
             isForeground(activityManager)
         }
 
+//        utilCommon.appMode = UtilCommon.APP_MODE_STOP
+
         return Result.success()
     }
 

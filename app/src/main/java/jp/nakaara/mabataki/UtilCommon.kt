@@ -11,7 +11,24 @@ import android.text.TextUtils
  * PreferenceManagerでアプリを閉じてもデータを保持できる
  */
 class UtilCommon  {
+
+
+    /**
+     * バイブレーション起動
+     */
     var vibration : Boolean = false
+        get() = field
+        set(value) {
+            field = value
+        }
+
+    /**
+     * 起動モード
+     * 0:停止
+     * 1:常時
+     * 2:アプリ
+     */
+    var appMode : Int = 0
         get() = field
         set(value) {
             field = value
@@ -25,7 +42,26 @@ class UtilCommon  {
 
 
     companion object {
+
+        /**
+         * Preferenceで使用
+         */
         private val UTIL_COMMON_PREF_KEY = "UTIL_COMMON"
+
+        /**
+         * 停止状態
+         */
+        const val APP_MODE_STOP = 0
+
+        /**
+         * 常時動作
+         */
+        const val APP_MODE_ACTIVE = 1
+
+        /**
+         * アプリ選択で動作
+         */
+        const val APP_MODE_APP = 2
 
         /**
          * 唯一のインスタンスを取得
@@ -54,7 +90,7 @@ class UtilCommon  {
         fun getDefaultInstance(): UtilCommon {
             val instance = UtilCommon()
             instance.vibration = false
-
+            instance.appMode = 0
             return instance
         }
     }
