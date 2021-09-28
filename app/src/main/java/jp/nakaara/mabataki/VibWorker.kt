@@ -1,20 +1,11 @@
 package jp.nakaara.mabataki
 
 import android.app.ActivityManager
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.content.Context.VIBRATOR_SERVICE
 import android.os.*
 import android.os.VibrationEffect.DEFAULT_AMPLITUDE
 import android.util.Log
-import android.widget.Toast
-import androidx.core.app.NotificationCompat
-import androidx.core.content.ContentProviderCompat.requireContext
-import androidx.core.content.ContextCompat.getSystemService
-import androidx.core.content.getSystemService
 import androidx.work.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -35,6 +26,8 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         var halt = false
 
         var instanceCount = 0
+
+        var isVib = false
     }
 
     override fun doWork(): Result {
@@ -74,6 +67,10 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         while (!halt) {
             Thread.sleep(3000)
 
+            if (!isVib) {
+                continue
+            }
+
             // バイブレーションを動作させるために必要
             val handler = Handler(Looper.getMainLooper())
             handler.postDelayed(Runnable { // Run your task here
@@ -85,7 +82,9 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 //            Log.d(WORK_TAG, "リピート中")
 
             val activityManager = this.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            isForeground(activityManager)
+            if (isForeground(activityManager)) {
+                // 対象のアプリがフォアグラウンドで動作している
+            }
         }
 
 //        utilCommon.appMode = UtilCommon.APP_MODE_STOP
@@ -103,6 +102,10 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         Log.d(WORK_TAG, "worker : onStopped")
     }
 
+    /**
+     * フォアグラウンドで動作しているアプリがappListに登録されているか確認
+     *
+     */
     private fun isForeground(activityManager: ActivityManager): Boolean {
 //        val runningProcesses = activityManager.runningAppProcesses
 //        for (processInfo in runningProcesses) {
@@ -121,7 +124,8 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         cal.add(Calendar.SECOND, -3)    // 1
 
 //        val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager // 2
-        val usageStatsManager  : UsageStatsManager = applicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val usageStatsManager: UsageStatsManager =
+            applicationContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
 
         val queryUsageStats = usageStatsManager.queryUsageStats(
@@ -133,18 +137,40 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 //        Log.d(WORK_TAG, sdf.format(cal.getTime()))
 //        Log.d(WORK_TAG, sdf.format(System.currentTimeMillis()))
 
+        // アプリ履歴の最終日時の降順でソート
         queryUsageStats.sortByDescending { i ->
             i.lastTimeUsed
         }
 
-        queryUsageStats.forEach { i ->
+        val utilCommon = UtilCommon.getInstance(this.applicationContext)
 
-            if (i.lastTimeUsed >= 0) {
-                Log.d(WORK_TAG, i.packageName)
-                Log.d(WORK_TAG, Date(i.lastTimeUsed).toString())
+        // 対象のアプリがフォアグラウンドならOK （スリープ時を考慮していないから要追加）
+        // 関数定義　foreachにbreakがないため関数化
+        val hantei : () -> Boolean = fun(): Boolean {
+
+            queryUsageStats.forEach { i ->
+
+                // 最終日時が0以外(降順で並べ替えているのでfalseになることは無いはず)のアプリ名=現在フォアグラウンドで動作しているアプリの場合
+                if (i.lastTimeUsed >= 0) {
+                    Log.d(WORK_TAG, i.packageName)
+                    Log.d(WORK_TAG, Date(i.lastTimeUsed).toString())
+
+                    // appリストにあるアプリとなっているか？
+                    utilCommon.appList.forEach { ii ->
+                        if (i.packageName == ii) {
+                            // OK
+                            return true
+                        }
+                    }
+
+                    // appリストに無いアプリがフォアグラウンドで動作しているためNG
+                    return false
+                }
             }
+            return false // ここには多分来ないが「A 'return' expression required in a function with a block body」となるため
         }
 
-        return false
+        // 関数実行　結果を返す
+        return hantei()
     }
 }
