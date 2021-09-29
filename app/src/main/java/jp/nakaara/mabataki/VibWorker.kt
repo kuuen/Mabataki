@@ -9,6 +9,12 @@ import android.util.Log
 import androidx.work.*
 import java.text.SimpleDateFormat
 import java.util.*
+import android.content.Intent
+
+import android.content.IntentFilter
+
+
+
 
 
 class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
@@ -29,6 +35,16 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
         var isVib = false
     }
+
+    /**
+     * スリープ状態を検知するためのレシーバ
+     */
+    private var mReceiver: SleepReceiver? = null
+
+    /**
+     * 院展とフィルター
+     */
+    private var mIntentFilter: IntentFilter? = null
 
     override fun doWork(): Result {
 
@@ -52,7 +68,7 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         instanceCount++;
 
         // Workerを起動しっぱなしにするとWorkerのインスタンスが増えることがある
-        // Workerを終了していない場合、マネージャ?がそのWorkerを自動で起動しているような気がする
+        // Workerを終了していない場合、マネージャ?がそのWorkerを自動で別のインスタント生成、起動しているような気がする
         // 対処指定な場合Workerが複数同時に動作している状態となる
         if (instanceCount >= 2) {
             // その場合はループに入らず終了する
@@ -63,6 +79,12 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         // 暫く待つ　haltの値変更後は待ちが必要
         Thread.sleep(3500)
         halt = false
+
+        // アプリで起動の場合
+        if (utilCommon.appMode == UtilCommon.APP_MODE_APP) {
+            // ブロードキャストレシーバを登録
+            this.registerScreenReceiver()
+        }
 
         while (!halt) {
             Thread.sleep(3000)
@@ -81,10 +103,23 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
 //            Log.d(WORK_TAG, "リピート中")
 
+            // ☆☆☆作成中　↓
             val activityManager = this.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            if (isForeground(activityManager)) {
-                // 対象のアプリがフォアグラウンドで動作している
+
+            if (utilCommon.appMode == UtilCommon.APP_MODE_APP) {
+
+                if (mReceiver?.isSleep == true) {
+                    // バイブレーションしない
+                }
+
+                if (isForeground(activityManager)) {
+                    // 対象のアプリがフォアグラウンドで動作している
+                } else {
+                    // バイブレーションしない
+                }
             }
+            // ☆☆☆作成中　↑
+
         }
 
 //        utilCommon.appMode = UtilCommon.APP_MODE_STOP
@@ -172,5 +207,17 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
         // 関数実行　結果を返す
         return hantei()
+    }
+
+    /**
+     * receiverを登録
+     * スリープを検知するため
+     */
+    private fun registerScreenReceiver() {
+        mReceiver = SleepReceiver()
+        mIntentFilter = IntentFilter()
+        mIntentFilter?.addAction(Intent.ACTION_SCREEN_ON)
+        mIntentFilter?.addAction(Intent.ACTION_SCREEN_OFF)
+        applicationContext.registerReceiver(mReceiver, mIntentFilter)
     }
 }
