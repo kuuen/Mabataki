@@ -47,7 +47,7 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:textOff="アプリで開始"
-        android:textOn="アプリで開始"
+        android:textOn="アプリで操作中"
         android:checked="false"/>
 
 </LinearLayout>

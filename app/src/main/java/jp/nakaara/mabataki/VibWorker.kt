@@ -1,6 +1,9 @@
 package jp.nakaara.mabataki
 
 import android.app.ActivityManager
+import android.app.Notification
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.os.*
@@ -12,9 +15,10 @@ import java.util.*
 import android.content.Intent
 
 import android.content.IntentFilter
-
-
-
+import androidx.core.app.NotificationCompat
+import android.app.NotificationChannel
+import android.graphics.Color
+import android.provider.SyncStateContract
 
 
 class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
@@ -33,7 +37,11 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
         var instanceCount = 0
 
-        var isVib = false
+        var isVib = true
+
+        val ACTION_SEND = "VibWorker_action_send"
+
+//        val CHANNEL_ID = "jp.nakaara.mabataki.action.SEND"
     }
 
     /**
@@ -82,9 +90,11 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
         // アプリで起動の場合
         if (utilCommon.appMode == UtilCommon.APP_MODE_APP) {
-            // ブロードキャストレシーバを登録
+            // 端末スリープ検知ブロードキャストレシーバを登録
             this.registerScreenReceiver()
         }
+
+        ShowNotice()
 
         while (!halt) {
             Thread.sleep(3000)
@@ -123,7 +133,7 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         }
 
 //        utilCommon.appMode = UtilCommon.APP_MODE_STOP
-
+        instanceCount--
         return Result.success()
     }
 
@@ -207,6 +217,61 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
         // 関数実行　結果を返す
         return hantei()
+    }
+
+    fun ShowNotice() {
+
+        val notificationManager =
+            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // カテゴリー名（通知設定画面に表示される情報）
+        val name = "通知のタイトル的情報を設定"
+        // システムに登録するChannelのID
+        val id = "casareal_chanel"
+        // 通知の詳細情報（通知設定画面に表示される情報）
+        val notifyDescription = "この通知の詳細情報を設定します"
+
+        // create channel in new versions of android
+        if (notificationManager.getNotificationChannel(id) == null) {
+            val mChannel =
+                NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH)
+            mChannel.apply {
+                description = notifyDescription
+            }
+            notificationManager.createNotificationChannel(mChannel)
+        }
+
+
+        val sendIntent = Intent(applicationContext, IntentBroadcastReceiver::class.java).apply {
+            action = ACTION_SEND
+        }
+        val sendPendingIntent = PendingIntent.getBroadcast(applicationContext, 0, sendIntent, 0)
+
+//        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+//            .setSmallIcon(R.drawable.ic_launcher_foreground)
+//            .setContentTitle("位置情報テスト")
+//            .setContentText("位置情報を取得しています...")
+//            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+//            // .setContentIntent(openIntent)
+////            .addAction(R.drawable.ic_launcher_foreground, "停止する", sendPendingIntent)
+//            .build()
+
+        val notification2 = NotificationCompat
+            .Builder(applicationContext, id)
+            .apply {
+                setSmallIcon(R.drawable.ic_launcher_background)
+                    .setContentTitle("タイトルだよ")
+                    .setContentText("内容だよ")
+                    .setAutoCancel(false)
+//                    .setContentIntent(pendingIntent)
+                    .addAction(R.drawable.ic_launcher_foreground, "停止する", sendPendingIntent)
+            }.build()
+
+        notification2.flags = Notification.FLAG_NO_CLEAR;
+        notificationManager.notify(UtilCommon.NOTIFICATION_ID, notification2)
+
+        // 通知の削除
+//        notificationManager.cancel(UtilCommon.NOTIFICATION_ID)
     }
 
     /**

@@ -1,6 +1,8 @@
 package jp.nakaara.mabataki
 
+
 import android.annotation.SuppressLint
+import android.app.*
 import android.content.Context
 import android.os.*
 import androidx.appcompat.app.AppCompatActivity
@@ -15,28 +17,39 @@ import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkInfo
 import com.google.common.util.concurrent.ListenableFuture
 import java.time.Duration
 import android.content.Intent
-import android.app.AppOpsManager
 import android.app.AppOpsManager.OPSTR_GET_USAGE_STATS
 
 import java.lang.reflect.Method
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.widget.TextView
 
-
-
-
+import android.os.Bundle
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 
 class MainActivity : AppCompatActivity() {
 
+    /**
+     * 常時動作ボタン
+     */
     var togBtnZyouzi : ToggleButton? = null
 
+    /**
+     * アプリで動作ボタン
+     */
     var togBtnApp : ToggleButton? = null
+
+    /**
+     * onResumeの場合True
+     */
+    var isResume = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +70,38 @@ class MainActivity : AppCompatActivity() {
         togBtnApp = findViewById<ToggleButton>(R.id.togBtnApp)
         togBtnApp?.setOnCheckedChangeListener(onTogBtnAppCheckedChangeListener)
     }
+
+    /**
+     * 通知タップ後にメインアクティビティを操作する
+     */
+    private val intentReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            togBtnZyouzi?.setChecked(false)
+            togBtnApp?.setChecked(false)
+        }
+    }
+
+    /**
+     * ボタンの状態を反映させる
+     */
+    override fun onResume() {
+        super.onResume()
+
+        isResume = true
+
+        val utilCommon = UtilCommon.getInstance(this)
+
+        when (utilCommon.appMode) {
+            UtilCommon.APP_MODE_ACTIVE -> {togBtnZyouzi?.setChecked(true) }
+            UtilCommon.APP_MODE_APP -> {togBtnApp?.setChecked(true) }
+        }
+
+        isResume = false
+
+        // ブロードキャストレシーバを登録する
+        LocalBroadcastManager.getInstance(this).registerReceiver(intentReceiver, IntentFilter(UtilCommon.INTENT_RECEIVER));
+    }
+
 
     /**
      * アプリ一覧画面表示ボタン
@@ -105,6 +150,9 @@ class MainActivity : AppCompatActivity() {
         val utilCommon = UtilCommon.getInstance(this)
         utilCommon.appMode = UtilCommon.APP_MODE_STOP
         utilCommon.saveInstance(this)
+
+        togBtnZyouzi?.setChecked(false)
+        togBtnApp?.setChecked(false)
     }
 
     /**
@@ -112,60 +160,40 @@ class MainActivity : AppCompatActivity() {
      */
     private val onTogBtnZyouziCheckedChangeListener = CompoundButton.OnCheckedChangeListener { _, isChecked ->
 
-        val utilCommon = UtilCommon.getInstance(this)
+        // ラムダ式内なので「return」をすると構文エラーとなる
+        // if (isResume) {return}
 
-        if (isChecked) {
-            if (togBtnApp?.isChecked == true) {
-                togBtnApp?.isChecked == false
-            }
-
-            val workManager = WorkManager.getInstance(application)
+        // onResumeイベントではボタンを押されている状態のみを行いたいのでその判別を行う
+        if (!isResume) {
+            val utilCommon = UtilCommon.getInstance(this)
 
             if (isChecked) {
-                Toast.makeText(this@MainActivity, "ちぇくされた", Toast.LENGTH_SHORT).show()
-                workManager.enqueue(OneTimeWorkRequest.from(VibWorker::class.java) )
-            } else {
-                Toast.makeText(this@MainActivity, "チェック解除", Toast.LENGTH_SHORT).show()
-            }
-
-            // 通知の実験　-----------------------------------------------------------------------------
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-            // カテゴリー名（通知設定画面に表示される情報）
-            val name = "通知のタイトル的情報を設定"
-            // システムに登録するChannelのID
-            val id = "casareal_chanel"
-            // 通知の詳細情報（通知設定画面に表示される情報）
-            val notifyDescription = "この通知の詳細情報を設定します"
-
-            // Channelの取得と生成
-            if (notificationManager.getNotificationChannel(id) == null) {
-                val mChannel = NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH)
-                mChannel.apply {
-                    description = notifyDescription
+                if (togBtnApp?.isChecked == true) {
+                    togBtnApp?.isChecked = false
                 }
-                notificationManager.createNotificationChannel(mChannel)
+
+                val workManager = WorkManager.getInstance(application)
+
+                if (isChecked) {
+                    Toast.makeText(this@MainActivity, "ちぇくされた", Toast.LENGTH_SHORT).show()
+                    workManager.enqueue(OneTimeWorkRequest.from(VibWorker::class.java))
+                } else {
+                    Toast.makeText(this@MainActivity, "チェック解除", Toast.LENGTH_SHORT).show()
+                }
+
+                // 通知の実験　-----------------------------------------------------------------------------
+//                ShowNotice()
+
+                utilCommon.appMode = UtilCommon.APP_MODE_ACTIVE
+            } else {
+
+                VibWorker.halt = true
+                utilCommon.appMode = UtilCommon.APP_MODE_STOP
             }
 
-            val notification = NotificationCompat
-                .Builder(this, id)
-                .apply {
-                    setSmallIcon(R.drawable.ic_launcher_background)
-//                mContentTitle = "タイトルだよ"
-//                mContentText = "内容だよ"
-                }.build()
-            notificationManager.notify(1, notification)
+            utilCommon.saveInstance(this)
 
-
-            utilCommon.appMode = UtilCommon.APP_MODE_ACTIVE
-        } else {
-
-            VibWorker.halt = true
-        }
-
-        utilCommon.saveInstance(this)
-
-        // これは定期的に起動するリクエスト
+            // これは定期的に起動するリクエスト
 //        val periodicWork = PeriodicWorkRequest.Builder(
 //            VibWorker::class.java,
 //            Duration.ofMinutes(15)
@@ -173,7 +201,7 @@ class MainActivity : AppCompatActivity() {
 //            addTag(VibWorker.WORK_TAG)
 //        }.build()
 
-        // タグ管理できるのは定期的に起動するものだけなのかも
+            // タグ管理できるのは定期的に起動するものだけなのかも
 //        val infoByTags : ListenableFuture<List<WorkInfo>> = workManager.getWorkInfosByTag(VibWorker.WORK_TAG)
 //        infoByTags.get().forEach {
 //            // it が　foreach で取得した中身
@@ -182,36 +210,90 @@ class MainActivity : AppCompatActivity() {
 //                workManager.cancelAllWorkByTag(VibWorker.WORK_TAG)
 //            }
 //        }
-
-
+        }
     }
 
     private val onTogBtnAppCheckedChangeListener = CompoundButton.OnCheckedChangeListener { _, isChecked ->
 
-        val utilCommon = UtilCommon.getInstance(this)
+        // ラムダ式内なので「return」をすると構文エラーとなる
+        // if (isResume) {return}
 
-        if (isChecked) {
-            if (togBtnZyouzi?.isChecked == true) {
-                togBtnZyouzi?.isChecked = false
-            }
+        // onResumeイベントではボタンを押されている状態のみを行いたいのでその判別を行う
+        if (!isResume) {
 
-            val workManager = WorkManager.getInstance(application)
+            val utilCommon = UtilCommon.getInstance(this)
 
             if (isChecked) {
-                Toast.makeText(this@MainActivity, "ちぇくされた", Toast.LENGTH_SHORT).show()
-                workManager.enqueue(OneTimeWorkRequest.from(VibWorker::class.java) )
+                if (togBtnZyouzi?.isChecked == true) {
+                    togBtnZyouzi?.isChecked = false
+                }
+
+                val workManager = WorkManager.getInstance(application)
+
+                if (isChecked) {
+                    Toast.makeText(this@MainActivity, "ちぇくされた", Toast.LENGTH_SHORT).show()
+                    workManager.enqueue(OneTimeWorkRequest.from(VibWorker::class.java))
+                } else {
+                    Toast.makeText(this@MainActivity, "チェック解除", Toast.LENGTH_SHORT).show()
+                }
+
+                utilCommon.appMode = UtilCommon.APP_MODE_APP
             } else {
-                Toast.makeText(this@MainActivity, "チェック解除", Toast.LENGTH_SHORT).show()
+                VibWorker.halt = true
+                utilCommon.appMode = UtilCommon.APP_MODE_STOP
             }
 
-            utilCommon.appMode = UtilCommon.APP_MODE_APP
-        } else {
-            VibWorker.halt = true
+            utilCommon.saveInstance(this)
         }
-
-        utilCommon.saveInstance(this)
     }
 
+
+    fun ShowNotice() {
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // カテゴリー名（通知設定画面に表示される情報）
+        val name = "通知のタイトル的情報を設定"
+        // システムに登録するChannelのID
+        val id = "casareal_chanel"
+        // 通知の詳細情報（通知設定画面に表示される情報）
+        val notifyDescription = "この通知の詳細情報を設定します"
+
+        // Channelの取得と生成
+        if (notificationManager.getNotificationChannel(id) == null) {
+            val mChannel =
+                NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH)
+            mChannel.apply {
+                description = notifyDescription
+            }
+            notificationManager.createNotificationChannel(mChannel)
+        }
+
+        val intent = Intent()
+
+        PendingIntent.getBroadcast(getBaseContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        val pendingIntent = PendingIntent.getBroadcast(
+            baseContext,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val notification = NotificationCompat
+            .Builder(this, id)
+            .apply {
+                setSmallIcon(R.drawable.ic_launcher_background)
+                    .setContentTitle("タイトルだよ")
+                    .setContentText("内容だよ")
+                    .setAutoCancel(false)
+                    .setContentIntent(pendingIntent)
+            }.build()
+        notification.flags = Notification.FLAG_NO_CLEAR;
+        notificationManager.notify(UtilCommon.NOTIFICATION_ID, notification)
+
+        // 通知の削除
+//        notificationManager.cancel(NOTIFICATION_ID)
+    }
 
     /**
      * 使用履歴にアクセスできるアプリとなっているか確認
@@ -239,20 +321,5 @@ class MainActivity : AppCompatActivity() {
 //        )
         return mode == AppOpsManager.MODE_ALLOWED
     }
-
-//    class object {
-//        val AppOpsManagerClass: Class<out Any?>?
-//        val checkOpNoThrow: Method?
-//        {
-//            try{
-//                AppOpsManagerClass = Class.forName("android.app.AppOpsManager")
-//                checkOpNoThrow = AppOpsManagerClass?.getMethod("checkOpNoThrow", javaClass<Int>(), javaClass<Int>(), javaClass<String>())
-//            }   catch (e: Exception) {
-//                e.printStackTrace()
-//                AppOpsManagerClass = null
-//                checkOpNoThrow = null
-//            }
-//        }
-//    }
 }
 

@@ -64,6 +64,17 @@ class UtilCommon  {
         const val APP_MODE_APP = 2
 
         /**
+         * 通知のID
+         * バイブ動作時に表示されれる通知で使用
+         */
+        const val NOTIFICATION_ID = 1555
+
+        /**
+         * 通知タップ後にメインアクティビティを操作する際のID
+         */
+        const val INTENT_RECEIVER = "INTENT_RECEIVER"
+
+        /**
          * 唯一のインスタンスを取得
          */
         fun getInstance(context: Context): UtilCommon {
