@@ -78,6 +78,12 @@ class MainActivity : AppCompatActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             togBtnZyouzi?.setChecked(false)
             togBtnApp?.setChecked(false)
+
+            // contextがNULLの状態は遭遇するのだろうか?
+            if (context != null) {
+                val utilCommon = UtilCommon.getInstance(context!!)
+                utilCommon.saveInstance(context)
+            }
         }
     }
 
@@ -247,53 +253,52 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-    fun ShowNotice() {
-        val notificationManager =
-            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        // カテゴリー名（通知設定画面に表示される情報）
-        val name = "通知のタイトル的情報を設定"
-        // システムに登録するChannelのID
-        val id = "casareal_chanel"
-        // 通知の詳細情報（通知設定画面に表示される情報）
-        val notifyDescription = "この通知の詳細情報を設定します"
-
-        // Channelの取得と生成
-        if (notificationManager.getNotificationChannel(id) == null) {
-            val mChannel =
-                NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH)
-            mChannel.apply {
-                description = notifyDescription
-            }
-            notificationManager.createNotificationChannel(mChannel)
-        }
-
-        val intent = Intent()
-
-        PendingIntent.getBroadcast(getBaseContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        val pendingIntent = PendingIntent.getBroadcast(
-            baseContext,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        val notification = NotificationCompat
-            .Builder(this, id)
-            .apply {
-                setSmallIcon(R.drawable.ic_launcher_background)
-                    .setContentTitle("タイトルだよ")
-                    .setContentText("内容だよ")
-                    .setAutoCancel(false)
-                    .setContentIntent(pendingIntent)
-            }.build()
-        notification.flags = Notification.FLAG_NO_CLEAR;
-        notificationManager.notify(UtilCommon.NOTIFICATION_ID, notification)
-
-        // 通知の削除
-//        notificationManager.cancel(NOTIFICATION_ID)
-    }
+//    fun ShowNotice() {
+//        val notificationManager =
+//            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+//
+//        // カテゴリー名（通知設定画面に表示される情報）
+//        val name = "通知のタイトル的情報を設定"
+//        // システムに登録するChannelのID
+//        val id = "casareal_chanel"
+//        // 通知の詳細情報（通知設定画面に表示される情報）
+//        val notifyDescription = "この通知の詳細情報を設定します"
+//
+//        // Channelの取得と生成
+//        if (notificationManager.getNotificationChannel(id) == null) {
+//            val mChannel =
+//                NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH)
+//            mChannel.apply {
+//                description = notifyDescription
+//            }
+//            notificationManager.createNotificationChannel(mChannel)
+//        }
+//
+//        val intent = Intent()
+//
+//        PendingIntent.getBroadcast(getBaseContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+//        val pendingIntent = PendingIntent.getBroadcast(
+//            baseContext,
+//            0,
+//            intent,
+//            PendingIntent.FLAG_UPDATE_CURRENT
+//        )
+//
+//        val notification = NotificationCompat
+//            .Builder(this, id)
+//            .apply {
+//                setSmallIcon(R.drawable.ic_launcher_background)
+//                    .setContentTitle("タイトルだよ")
+//                    .setContentText("内容だよ")
+//                    .setAutoCancel(false)
+//                    .setContentIntent(pendingIntent)
+//            }.build()
+//        notification.flags = Notification.FLAG_NO_CLEAR;
+//        notificationManager.notify(UtilCommon.NOTIFICATION_ID, notification)
+//
+//        // 通知の削除
+////        notificationManager.cancel(NOTIFICATION_ID)
+//    }
 
     /**
      * 使用履歴にアクセスできるアプリとなっているか確認

@@ -17,8 +17,11 @@ import android.content.Intent
 import android.content.IntentFilter
 import androidx.core.app.NotificationCompat
 import android.app.NotificationChannel
+
+
 import android.graphics.Color
 import android.provider.SyncStateContract
+import androidx.core.content.ContextCompat.getSystemService
 
 
 class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
@@ -37,7 +40,7 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
         var instanceCount = 0
 
-        var isVib = true
+//        var isVib = true
 
         val ACTION_SEND = "VibWorker_action_send"
 
@@ -99,38 +102,53 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         while (!halt) {
             Thread.sleep(3000)
 
-            if (!isVib) {
-                continue
+//            if (!isVib) {
+//                continue
+//            }
+
+            val activityManager = this.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+
+            if (utilCommon.appMode == UtilCommon.APP_MODE_APP) {
+
+                // スリープしていたらバイブしない
+                if (mReceiver?.isSleep == true) {
+                    // バイブレーションしない
+                    Log.d(WORK_TAG, "バイブしない")
+                    continue
+                }
+
+                // 対象のアプリが起動していない場合バイブしない
+                if (!isForeground(activityManager)) {
+                    // バイブレーションしない
+                    Log.d(WORK_TAG, "バイブしない")
+                    continue
+                }
             }
 
             // バイブレーションを動作させるために必要
             val handler = Handler(Looper.getMainLooper())
             handler.postDelayed(Runnable { // Run your task here
-                val vibrator = this.applicationContext.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+
+                // apiバージョンによってvibrator取得方法を分ける
+                val vibrator  = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vibratorManager =  this.applicationContext.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                    vibratorManager.defaultVibrator;
+                } else {
+                    this.applicationContext.getSystemService(Context.VIBRATOR_SERVICE)  as Vibrator
+                }
+
+//                val vibrator = this.applicationContext.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                 val vibrationEffect = VibrationEffect.createOneShot(200, DEFAULT_AMPLITUDE)
                 vibrator.vibrate(vibrationEffect)
             }, 1000)
 
-//            Log.d(WORK_TAG, "リピート中")
-
-            // ☆☆☆作成中　↓
-            val activityManager = this.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-
-            if (utilCommon.appMode == UtilCommon.APP_MODE_APP) {
-
-                if (mReceiver?.isSleep == true) {
-                    // バイブレーションしない
-                }
-
-                if (isForeground(activityManager)) {
-                    // 対象のアプリがフォアグラウンドで動作している
-                } else {
-                    // バイブレーションしない
-                }
-            }
-            // ☆☆☆作成中　↑
-
         }
+
+        val notificationManager =
+            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // 通知の削除
+        notificationManager.cancel(UtilCommon.NOTIFICATION_ID)
 
 //        utilCommon.appMode = UtilCommon.APP_MODE_STOP
         instanceCount--
@@ -256,19 +274,19 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 ////            .addAction(R.drawable.ic_launcher_foreground, "停止する", sendPendingIntent)
 //            .build()
 
-        val notification2 = NotificationCompat
+        val notification = NotificationCompat
             .Builder(applicationContext, id)
             .apply {
                 setSmallIcon(R.drawable.ic_launcher_background)
-                    .setContentTitle("タイトルだよ")
-                    .setContentText("内容だよ")
+                    .setContentTitle("瞬き")
+                    .setContentText("動作中")
                     .setAutoCancel(false)
 //                    .setContentIntent(pendingIntent)
                     .addAction(R.drawable.ic_launcher_foreground, "停止する", sendPendingIntent)
             }.build()
 
-        notification2.flags = Notification.FLAG_NO_CLEAR;
-        notificationManager.notify(UtilCommon.NOTIFICATION_ID, notification2)
+        notification.flags = Notification.FLAG_NO_CLEAR;
+        notificationManager.notify(UtilCommon.NOTIFICATION_ID, notification)
 
         // 通知の削除
 //        notificationManager.cancel(UtilCommon.NOTIFICATION_ID)

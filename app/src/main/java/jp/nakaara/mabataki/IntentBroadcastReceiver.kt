@@ -18,12 +18,7 @@ class IntentBroadcastReceiver : BroadcastReceiver() {
 
         Log.d("IntentBroadcastReceiver", "onRecive")
 
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        // 通知の削除
-        notificationManager.cancel(UtilCommon.NOTIFICATION_ID)
-
+        // バイブの停止指示
         VibWorker.halt = true
 
         // ブロードキャストレシーバ送信 メインアクティビティを変更するために行う
