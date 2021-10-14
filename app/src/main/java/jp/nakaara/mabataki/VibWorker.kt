@@ -8,6 +8,7 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.os.*
 import android.os.VibrationEffect.DEFAULT_AMPLITUDE
+import android.os.VibrationEffect.EFFECT_HEAVY_CLICK
 import android.util.Log
 import androidx.work.*
 import java.text.SimpleDateFormat
@@ -17,6 +18,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import androidx.core.app.NotificationCompat
 import android.app.NotificationChannel
+import android.content.pm.ApplicationInfo
 
 
 import android.graphics.Color
@@ -38,13 +40,23 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
          */
         var halt = false
 
+        /** インスタンスが1以上になることがあるのでその制限を行うために使用 */
         var instanceCount = 0
 
 //        var isVib = true
 
+        /** 通知の識別子 */
         val ACTION_SEND = "VibWorker_action_send"
 
 //        val CHANNEL_ID = "jp.nakaara.mabataki.action.SEND"
+
+        /** アプリ動作モードで使用　前回ループ時にバイブレーションしたかの保持 */
+        var periodVib = false;
+
+        var periodSleep = false
+
+        /** システムアプリリスト */
+        var systemAppList: MutableList<String> = ArrayList<String>()
     }
 
     /**
@@ -97,6 +109,10 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
             this.registerScreenReceiver()
         }
 
+        // システムアプリ名一覧取得
+        getSystemApp()
+
+        // 通知表示
         ShowNotice()
 
         while (!halt) {
@@ -113,15 +129,26 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
                 // スリープしていたらバイブしない
                 if (mReceiver?.isSleep == true) {
                     // バイブレーションしない
-                    Log.d(WORK_TAG, "バイブしない")
-                    continue
-                }
+                    Log.d(WORK_TAG, "isSleep バイブしない")
 
-                // 対象のアプリが起動していない場合バイブしない
-                if (!isForeground(activityManager)) {
-                    // バイブレーションしない
-                    Log.d(WORK_TAG, "バイブしない")
+                    // periodVib = false　スリープ前動作していたかは変更せずに状態保持をする
+                    periodSleep = true
                     continue
+                } else {
+
+                    // スリープ復帰後、スリープ前のアプリが該当している場合はバイブする
+                    if (!periodVib || !periodSleep) {
+
+                        // 対象のアプリが起動していない場合バイブしない
+                        if (!isForeground(activityManager)) {
+                            // バイブレーションしない
+                            Log.d(WORK_TAG, "isForeground バイブしない")
+                            periodVib = false
+                            continue
+                        }
+                    } else {
+                        periodSleep = false
+                    }
                 }
             }
 
@@ -138,9 +165,15 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
                 }
 
 //                val vibrator = this.applicationContext.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+//                var kyoudo = if (utilCommon.appMode == UtilCommon.APP_MODE_APP) DEFAULT_AMPLITUDE else EFFECT_HEAVY_CLICK
+
+//                var kyoudo = if (utilCommon.appMode == UtilCommon.APP_MODE_APP) DEFAULT_AMPLITUDE else 255
+
+//                val vibrationEffect = VibrationEffect.createOneShot(200, kyoudo)
                 val vibrationEffect = VibrationEffect.createOneShot(200, DEFAULT_AMPLITUDE)
                 vibrator.vibrate(vibrationEffect)
             }, 1000)
+            periodVib = true
 
         }
 
@@ -152,6 +185,8 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
 //        utilCommon.appMode = UtilCommon.APP_MODE_STOP
         instanceCount--
+
+        Log.d(WORK_TAG, "Result.success()")
         return Result.success()
     }
 
@@ -207,14 +242,15 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
         val utilCommon = UtilCommon.getInstance(this.applicationContext)
 
-        // 対象のアプリがフォアグラウンドならOK （スリープ時を考慮していないから要追加）
+        // 対象のアプリがフォアグラウンドならOK
         // 関数定義　foreachにbreakがないため関数化
         val hantei : () -> Boolean = fun(): Boolean {
 
             queryUsageStats.forEach { i ->
 
                 // 最終日時が0以外(降順で並べ替えているのでfalseになることは無いはず)のアプリ名=現在フォアグラウンドで動作しているアプリの場合
-                if (i.lastTimeUsed >= 0) {
+                // かつ　システムアプリではない場合(スリープから復帰後に対象のAPPがフォアグラウンドにあるのにシステムのパッケージ名がリストの先頭になりNGとなってしまうため)
+                if (i.lastTimeUsed >= 0 && systemAppList.find{ it == i.packageName } == null ) {
                     Log.d(WORK_TAG, i.packageName)
                     Log.d(WORK_TAG, Date(i.lastTimeUsed).toString())
 
@@ -233,8 +269,18 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
             return false // ここには多分来ないが「A 'return' expression required in a function with a block body」となるため
         }
 
+        // 結果を返す
+        return if (hantei())
+            true
+        else if (queryUsageStats.count() == 0 && periodVib)
+            // 動作リストが0件だが前回バイブ動作している場合はOKとする
+            true
+        else
+            // それ以外はバイブしない
+            false
+
         // 関数実行　結果を返す
-        return hantei()
+        //return hantei()
     }
 
     fun ShowNotice() {
@@ -303,4 +349,19 @@ class VibWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         mIntentFilter?.addAction(Intent.ACTION_SCREEN_OFF)
         applicationContext.registerReceiver(mReceiver, mIntentFilter)
     }
+
+
+
+    private fun getSystemApp() {
+        val packageManager = applicationContext.getPackageManager()
+        val installedAppList: List<ApplicationInfo> = packageManager.getInstalledApplications(0)
+
+        // インストールされたアプリ一覧を
+        for (app in installedAppList) {
+            if (app.flags and ApplicationInfo.FLAG_SYSTEM === ApplicationInfo.FLAG_SYSTEM) {
+                systemAppList.add(app.packageName)
+            }
+        }
+    }
+
 }
